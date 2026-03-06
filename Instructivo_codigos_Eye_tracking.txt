@@ -1,0 +1,65 @@
+Fase 1: Pre-procesamiento y Estandarización de Datos Crudos
+El objetivo de esta fase es limpiar los archivos de texto exportados por el hardware, estructurarlos
+y garantizar que todos los bloques de análisis tengan exactamente la misma longitud temporal.
+•	1. Filtrar_MO: Lee múltiples archivos de texto, extrae las coordenadas espaciales y
+de tiempo, filtra únicamente el estímulo de interés (ej. MO 50), limpia errores tipográficos
+en los números y elimina filas sin coordenadas válidas.
+•	2. Unir_excel_MO: Toma todos los archivos individuales generados en el paso anterior y los
+agrupa en un único archivo maestro de Excel, asignando una hoja distinta a cada participante.
+•	3. Resolver_anomalias: Implementa corrección temporal profunda. Analiza la diferencia
+de tiempo entre cada muestra para reparar datos duplicados, fusionar muestras demasiado cercanas
+(<6ms) y dividir saltos o huecos de pérdida de seguimiento (>14ms).
+•	4. 119: Garantiza la uniformidad dimensional requerida para el entrenamiento de modelos.
+Trunca o rellena (duplicando la última fila válida) cada grupo de datos para asegurar que todos
+los participantes tengan exactamente 119 muestras por estímulo.
+
+Fase 2: Normalización y Extracción Geométrica
+Se enfoca en transformar las coordenadas de píxeles a unidades estandarizadas , así como de pixeles a grados.
+•	5. Normalizar_Z: Aplica un escalado estándar (Z-score) sobre las coordenadas X e Y en píxeles. Esto
+elimina sesgos generados por diferentes resoluciones de pantalla y centra los datos.
+•	6. px_a_º: Utiliza trigonometría espacial para convertir la posición en la pantalla (píxeles) y
+la distancia del usuario (eje Z en mm) a ángulos visuales (grados).
+
+
+Fase 3: Extracción de características
+Se calculan las variables matemáticas, estadísticas y físicas que servirán como predictores para el
+algoritmo de aprendizaje automático.
+•	7. METRICAS_#: Utiliza ventanas móviles para extraer características estadísticas básicas de
+las coordenadas normalizadas, como la Media, el Root Mean Square (RMS) y el conteo de cruces por cero.
+•	8. METRICAS_º: A partir de los ángulos visuales, calcula la cinemática del ojo: Velocidad
+angular, Aceleración, Jerk (derivada de la aceleración), Dispersión espacial, Curtosis y Energía del movimiento.
+•	10. Residuo_mediana: Genera un indicador de anomalías calculando la diferencia absoluta entre
+el valor real y una mediana móvil centrada.
+
+Fase 4: Aumento de Datos, Etiquetado y Optimización
+
+Fase dedicada a incrementar la robustez del modelo, etiquetar manualmente una base de verdad
+(ground truth) y evitar el sobreajuste.
+•	9. Inyectar_ruido: Algoritmo de Data Augmentation que inyecta ruido sintético simulando
+errores del hardware o fisiológicos (Ruido I: Picos aislados; Ruido III: Ráfagas sostenidas).
+•	11. Pagina_Etiqueta_A: Interfaz gráfica desarrollada en Streamlit. Permite visualizar las
+coordenadas espaciales en tiempo real junto con un mapa de calor, facilitando la clasificación
+manual y directa de los movimientos (Fijaciones, Sacadas, Ruido) en el archivo Excel.
+•	12. Correlación_de_Pearson: Analiza la multicolinealidad de las métricas generadas. Produce
+un mapa de calor y sugiere la eliminación de variables redundantes (con una correlación > 80%) para
+optimizar la eficiencia del modelo predictivo.
+
+Fase 5: Entrenamiento y evaluación de Random Forest)
+Abarca el entrenamiento, validación y ejecución del clasificador principal.
+•	13. Hojas_a_lista: Extrae los datos previamente separados por hojas en la herramienta de
+etiquetado y los consolida en una sola tabla continua, validando por última vez la longitud de 119 muestras.
+•	14. Xlsx_Csv: Depura el conjunto de datos eliminando variables espaciales crudas y exporta
+la tabla a formato CSV, optimizando los tiempos de carga para el entrenamiento.
+•	15. Entrenar_RF: Entrena el clasificador Random Forest. Construye contexto temporal (desplazando
+variables ±3 periodos), balancea clases con Random Over/Under Sampling y evalúa el modelo exportando
+métricas, matriz de confusión y el archivo .pkl del cerebro entrenado.
+•	16. Modelo_RF: Carga el modelo pre-entrenado y lo aplica a datos nuevos y desconocidos para
+predecir su clasificación.
+
+Fase 6: Modelos Deterministas y Evaluación Visual Comparativa
+Implementación de algoritmos clásicos de la literatura científica para contrastar el desempeño de la Inteligencia Artificial.
+•	17. I-VDT: Implementa el algoritmo de Identificación por Umbral de Velocidad y Dispersión.
+Clasifica fijaciones y sacadas basado en reglas físicas estrictas y ventanas temporales.
+•	18. I-VVT: Implementa el algoritmo de Identificación por doble Umbral de Velocidad. Usa límites fijos como otra capa de validación fisiológica.
+•	19. Graficar_predicciones_modelos: Genera gráficos de barras horizontales apiladas (stacked bars). Superpone
+las coordenadas reales del ojo con los bloques de clasificación de la Etiqueta Real (Etiqueta_A), Random Forest, SVM, I-VVT e I-VDT.
